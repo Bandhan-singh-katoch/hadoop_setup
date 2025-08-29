@@ -1,0 +1,141 @@
+Download Hive 3.1.3:
+
+cd /opt  # or your preferred installation directory
+sudo wget https://archive.apache.org/dist/hive/hive-3.1.3/apache-hive-3.1.3-bin.tar.gz
+
+Extract the archive:
+
+bashsudo tar -xzf apache-hive-3.1.3-bin.tar.gz
+sudo mv apache-hive-3.1.3-bin hive
+sudo chown -R $USER:$USER /opt/hive
+
+
+
+Set up environment variables:
+Add these to your ~/.bashrc or ~/.profile:
+
+bash# Add to ~/.bashrc
+export HIVE_HOME=/opt/hive
+export PATH=$PATH:$HIVE_HOME/bin
+export CLASSPATH=$CLASSPATH:$HADOOP_HOME/lib/*:.
+export CLASSPATH=$CLASSPATH:$HIVE_HOME/lib/*:.
+
+source ~/.bashrc
+
+cd $HIVE_HOME/conf
+sudo cp hive-default.xml.template hive-site.xml
+
+
+Configure hive-site.xml (basic configuration):
+
+xml<configuration>
+  <property>
+    <name>javax.jdo.option.ConnectionURL</name>
+    <value>jdbc:derby:;databaseName=metastore_db;create=true</value>
+  </property>
+  <property>
+    <name>javax.jdo.option.ConnectionDriverName</name>
+    <value>org.apache.derby.jdbc.EmbeddedDriver</value>
+  </property>
+  <property>
+    <name>hive.metastore.warehouse.dir</name>
+    <value>/tmp/hive</value>
+  </property>
+  <property>
+    <name>hive.exec.scratchdir</name>
+    <value>/tmp/hive</value>
+  </property>
+</configuration>
+
+
+Initialize Schema
+
+Initialize the schema database:
+
+bashcd $HIVE_HOME/bin
+./schematool -initSchema -dbType derby
+
+
+start-dfs.sh
+start-yarn.sh
+
+# Verify services are running
+jps
+
+
+
+
+Create necessary HDFS directories:
+
+bashhdfs dfs -mkdir -p /tmp
+hdfs dfs -mkdir -p /user/hive/warehouse
+hdfs dfs -chmod 777 /tmp
+hdfs dfs -chmod 777 /user/hive/warehouse
+
+
+
+hive
+
+
+Issue 1: Guava version conflict
+If you get Guava-related errors:
+bash# Remove conflicting Guava jar from Hive
+rm $HIVE_HOME/lib/guava-19.0.jar
+# Copy Hadoop's Guava jar to Hive
+cp $HADOOP_HOME/share/hadoop/hdfs/lib/guava-*.jar $HIVE_HOME/lib/
+
+
+
+Solution 1: Fix hive-site.xml Configuration
+Edit your hive-site.xml file to replace the problematic property values:
+bashcd $HIVE_HOME/conf
+sudo nano hive-site.xml
+Add or modify these properties in your hive-site.xml:
+xml<configuration>
+  <property>
+    <name>hive.exec.local.scratchdir</name>
+    <value>/tmp/hive</value>
+  </property>
+  
+  <property>
+    <name>hive.downloaded.resources.dir</name>
+    <value>/tmp/hive_resources</value>
+  </property>
+  
+  <property>
+    <name>hive.scratch.dir.permission</name>
+    <value>733</value>
+  </property>
+  
+  <property>
+    <name>hive.exec.scratchdir</name>
+    <value>/tmp/hive</value>
+  </property>
+  
+  <property>
+    <name>hive.metastore.warehouse.dir</name>
+    <value>/user/hive/warehouse</value>
+  </property>
+  
+  <property>
+    <name>javax.jdo.option.ConnectionURL</name>
+    <value>jdbc:derby:;databaseName=metastore_db;create=true</value>
+  </property>
+  
+  <property>
+    <name>javax.jdo.option.ConnectionDriverName</name>
+    <value>org.apache.derby.jdbc.EmbeddedDriver</value>
+  </property>
+</configuration>
+
+
+
+to reinitiate with metastore
+pkill -f hive
+
+# Remove old derby metastore
+rm -rf metastore_db/
+rm -rf /tmp/hive  # cleanup scratch dirs
+
+# Re-initialize schema
+schematool -initSchema -dbType derby
