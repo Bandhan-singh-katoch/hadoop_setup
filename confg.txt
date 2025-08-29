@@ -1,0 +1,3 @@
+hadoop-3.3.6 
+apache-hive-3.1.3-bin.tar.gz
+openjdk version "1.8.0_462"
